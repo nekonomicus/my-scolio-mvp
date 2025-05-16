@@ -1,0 +1,4 @@
+Flask>=3.0
+gunicorn>=21.2
+ics>=0.7
+python-dotenv>=1.0

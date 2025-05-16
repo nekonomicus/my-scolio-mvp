@@ -1,4 +1,4 @@
-import os,sqlite3,datetime,io
+@@ -2,90 +2,96 @@ import os,sqlite3,datetime,io
 from flask import Flask,g,render_template_string,request,redirect,url_for,session,send_file
 from werkzeug.security import generate_password_hash,check_password_hash
 from ics import Calendar,Event
@@ -25,6 +25,10 @@ def db():
     return g.d
 @app.teardown_appcontext
 def _c(e): g.pop('d',None) and g.d.close()
+def _c(e):
+    d = g.pop('d', None)
+    if d:
+        d.close()
 
 @app.before_first_request
 def init():
@@ -49,17 +53,23 @@ def login():
     return tpl('login')
 
 @app.route('/logout');logout=lambda:(session.clear(),redirect('/login'))[1]
+@app.route('/logout')
+def logout():
+    session.clear()
+    return redirect('/login')
 
 @app.route('/dash')
 def dash(): return redirect('/physio') if session['role']=='physio' else redirect('/patient')
 
 @app.route('/physio'); 
+@app.route('/physio')
 def physio():
     p=db().execute("select id,email from users where role='patient'").fetchall()
     e=db().execute("select * from exercises").fetchall()
     return tpl('physio',patients=p,exercises=e)
 
 @app.post('/assign');
+@app.post('/assign')
 def assign():
     dt=datetime.datetime.strptime(f"{request.form['date']} {request.form['time']}",'%Y-%m-%d %H:%M')
     db().execute("insert into schedule(patient_id,exercise_id,scheduled_at) values(?,?,?)",
@@ -67,6 +77,7 @@ def assign():
     return redirect('/physio')
 
 @app.route('/patient');
+@app.route('/patient')
 def patient():
     today=datetime.date.today()
     t0,t1=datetime.datetime.combine(today,datetime.time.min),datetime.datetime.combine(today,datetime.time.max)
@@ -76,11 +87,13 @@ def patient():
     return tpl('patient',items=it)
 
 @app.post('/done/<int:id>');
+@app.post('/done/<int:id>')
 def done(id):
     db().execute("update schedule set completed=1 where id=?", (id,));db().commit()
     return redirect('/patient')
 
 @app.route('/calendar.ics');
+@app.route('/calendar.ics')
 def ics():
     cal=Calendar();cur=db().execute("""select e.name,s.scheduled_at from schedule s
                                         join exercises e on e.id=s.exercise_id
